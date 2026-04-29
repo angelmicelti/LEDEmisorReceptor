@@ -261,46 +261,158 @@
         }
 
         /* ========================================================= */
-        /*  LED                                                        */
+        /*  LED — SIDE VIEW (realistic 5mm through-hole)               */
         /* ========================================================= */
-        .led-container { display: flex; flex-direction: column; align-items: center; margin: 16px 0; }
-        .led-body { position: relative; display: inline-block; margin-bottom: 20px; }
-        .led-capsule {
+        .led-container { display: flex; flex-direction: column; align-items: center; margin: 10px 0 6px; }
+        .led-body {
             position: relative;
-            width: 100px; height: 100px;
-            background: radial-gradient(circle at 35% 30%, #e0e0e0, #a0a0a0);
-            border-radius: 50% 50% 45% 45% / 60% 60% 40% 40%;
-            box-shadow: 0 8px 12px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.8);
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
+            width: 120px;
+            height: 210px;
         }
-        .led-lens {
-            width: 74px; height: 74px;
-            background: radial-gradient(circle at 35% 35%, #d4f1f9, #86b3c2);
-            border-radius: 50%;
-            box-shadow: inset 0 2px 5px rgba(0,0,0,0.2), 0 0 8px rgba(0,0,0,0.2);
-            transition: background 0.07s linear, box-shadow 0.1s;
-        }
-        .led-capsule.on .led-lens {
-            background: radial-gradient(circle at 35% 35%, #b8ffa0, #2ecc2e);
-            box-shadow: 0 0 25px #2eff7a, 0 0 60px rgba(46,204,46,0.3), inset 0 1px 4px white;
-        }
-        .led-pins { display: flex; justify-content: center; gap: 26px; margin-top: -8px; }
-        .pin { width: 8px; background: linear-gradient(90deg, #b5b5b5, #7e7e7e); border-radius: 2px; position: relative; }
-        .pin.anode { height: 48px; margin-right: 6px; }
-        .pin.cathode { height: 32px; }
-        .pin-label {
-            font-size: 0.7rem; font-weight: 700; margin-top: 6px;
-            background: #000000aa; padding: 2px 7px; border-radius: 10px;
+
+        /* — Dome (hemisphere lens) — */
+        .led-dome {
+            width: 64px;
+            height: 36px;
+            border-radius: 32px 32px 4px 4px;
             position: relative;
+            z-index: 3;
+            background:
+                radial-gradient(ellipse at 38% 25%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 45%),
+                linear-gradient(175deg, #c8d4d8 0%, #96aab4 40%, #7a929e 100%);
+            box-shadow:
+                inset 2px 3px 6px rgba(255,255,255,0.35),
+                inset -1px -1px 4px rgba(0,0,0,0.15),
+                0 4px 10px rgba(0,0,0,0.25);
+            transition: background 0.1s ease, box-shadow 0.15s ease;
         }
-        .pin.anode .pin-label { color: #ffaa66; }
-        .pin.cathode .pin-label { color: #88ccff; }
-        .legend {
-            display: flex; gap: 16px; justify-content: center; margin-top: 12px;
-            font-size: 0.65rem; background: #00000066; padding: 4px 10px;
-            border-radius: 12px; width: fit-content; margin-left: auto; margin-right: auto;
+        /* Cathode flat indicator on dome side */
+        .led-dome::after {
+            content: '';
+            position: absolute;
+            left: -3px;
+            top: 14px;
+            width: 6px;
+            height: 16px;
+            background: rgba(0,0,0,0.08);
+            border-radius: 2px 0 0 2px;
+        }
+
+        /* — LED ON state — dome glows green */
+        .led-dome.on {
+            background:
+                radial-gradient(ellipse at 40% 30%, rgba(200,255,180,0.8) 0%, rgba(46,204,46,0.3) 50%, rgba(30,180,40,0.1) 80%),
+                linear-gradient(175deg, #b0f5a0 0%, #50d050 40%, #30a830 100%);
+            box-shadow:
+                inset 2px 3px 8px rgba(255,255,255,0.5),
+                inset -1px -1px 4px rgba(0,60,0,0.2),
+                0 0 20px rgba(46,255,100,0.6),
+                0 0 50px rgba(46,255,100,0.3),
+                0 0 90px rgba(46,255,100,0.12);
+        }
+
+        /* — Internal reflector cup (visible inside dome) — */
+        .led-dome::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 22px;
+            height: 14px;
+            border-radius: 50% 50% 0 0;
+            background: radial-gradient(ellipse at 50% 60%, #5a7080 0%, #3a5060 100%);
+            z-index: 1;
+        }
+        .led-dome.on::before {
+            background: radial-gradient(ellipse at 50% 60%, #30c030 0%, #108010 100%);
+            box-shadow: 0 0 8px rgba(46,255,100,0.5);
+        }
+
+        /* — Body (epoxy rectangle) — */
+        .led-case {
+            width: 48px;
+            height: 32px;
+            background: linear-gradient(90deg, #b8c6cc 0%, #d0dce0 30%, #c0ccd2 70%, #a0b0b8 100%);
+            border-radius: 2px;
+            position: relative;
+            z-index: 2;
+            margin-top: -2px;
+            box-shadow:
+                inset 1px 1px 3px rgba(255,255,255,0.3),
+                inset -1px 0 3px rgba(0,0,0,0.1),
+                0 2px 6px rgba(0,0,0,0.2);
+        }
+        /* Tinted body when ON */
+        .led-case.on {
+            background: linear-gradient(90deg, #a0d8a0 0%, #c0f0c0 30%, #b0e8b0 70%, #90c890 100%);
+        }
+
+        /* — Leads wrapper — */
+        .led-leads {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            height: 80px;
+            margin-top: -1px;
+        }
+
+        /* — Individual leads — */
+        .led-lead {
+            position: absolute;
+            width: 5px;
+            border-radius: 0 0 1px 1px;
+            background: linear-gradient(90deg, #a0a0a0 0%, #d0d0d0 40%, #b0b0b0 70%, #808080 100%);
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+            top: 0;
+        }
+        .led-lead-anode {
+            left: calc(50% - 14px);
+            height: 72px;
+        }
+        .led-lead-cathode {
+            left: calc(50% + 9px);
+            height: 48px;
+        }
+
+        /* — Lead labels — */
+        .led-lead-label {
+            position: absolute;
+            bottom: -22px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.62rem;
+            font-weight: 700;
+            white-space: nowrap;
+            background: #000000aa;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        .led-lead-label-anode { color: #ffaa66; }
+        .led-lead-label-cathode { color: #88ccff; }
+
+        /* — Glow reflection on surface below LED — */
+        .led-surface-glow {
+            width: 80px;
+            height: 10px;
+            border-radius: 50%;
+            margin-top: 4px;
+            background: radial-gradient(ellipse, rgba(200,200,200,0.08) 0%, transparent 70%);
+            transition: background 0.15s ease;
+        }
+        .led-surface-glow.on {
+            background: radial-gradient(ellipse, rgba(46,255,100,0.25) 0%, rgba(46,255,100,0.05) 50%, transparent 70%);
+        }
+
+        .led-legend {
+            display: flex; gap: 16px; justify-content: center; margin-top: 8px;
+            font-size: 0.62rem; background: #00000066; padding: 3px 10px;
+            border-radius: 10px; width: fit-content; margin-left: auto; margin-right: auto;
+            color: #8899aa;
         }
 
         /* ========================================================= */
@@ -1040,16 +1152,16 @@
                 '<div class="role-badge role-badge-slave">ESCLAVO</div>' +
                 '<div class="led-container">' +
                     '<div class="led-body">' +
-                        '<div class="led-capsule ' + (ledState ? 'on' : '') + '">' +
-                            '<div class="led-lens"></div>' +
+                        '<div class="led-dome ' + (ledState ? 'on' : '') + '"></div>' +
+                        '<div class="led-case ' + (ledState ? 'on' : '') + '"></div>' +
+                        '<div class="led-leads">' +
+                            '<div class="led-lead led-lead-anode"><div class="led-lead-label led-lead-label-anode">+ Anodo</div></div>' +
+                            '<div class="led-lead led-lead-cathode"><div class="led-lead-label led-lead-label-cathode">- Catodo</div></div>' +
                         '</div>' +
-                        '<div class="led-pins">' +
-                            '<div class="pin anode"><div class="pin-label">+ Anodo</div></div>' +
-                            '<div class="pin cathode"><div class="pin-label">- Catodo</div></div>' +
-                        '</div>' +
+                        '<div class="led-surface-glow ' + (ledState ? 'on' : '') + '"></div>' +
                     '</div>' +
-                    '<div class="legend">Anodo (+) &nbsp;&nbsp; Catodo (-)</div>' +
-                    '<div style="margin:8px 0; font-size:0.95rem; font-weight:700; color:' + (ledState ? '#4ade80' : '#6b7280') + ';">' +
+                    '<div class="led-legend">Anodo largo (+) &nbsp;&bull;&nbsp; Catodo corto (-)</div>' +
+                    '<div style="margin:4px 0; font-size:0.92rem; font-weight:700; color:' + (ledState ? '#4ade80' : '#6b7280') + ';">' +
                         (ledState ? 'ENCENDIDO' : 'APAGADO') +
                     '</div>' +
                 '</div>' +
