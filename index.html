@@ -748,6 +748,7 @@
     var isConnected = false;
     var heartbeatTimer = null;
     var myDeviceRef = null;
+    var _lastRenderKey = null;
 
     var masterIdCb = null, masterIdRef = null;
     var devicesCb = null, devicesRef = null;
@@ -999,9 +1000,18 @@
     // =============================================================
     function renderUI() {
         if (!isConnected || !currentRoomId) {
+            var disconnectedKey = '!connected';
+            if (_lastRenderKey === disconnectedKey) return;
+            _lastRenderKey = disconnectedKey;
             dynamicDiv.innerHTML = '<div style="padding:20px; color:#6c8ea0;">Desconectado</div>';
             return;
         }
+
+        // Build a key from all data that affects rendering
+        var othersKeys = Object.keys(allDevices).sort().join(',');
+        var renderKey = myRole + '|' + (ledState ? '1' : '0') + '|' + othersKeys + '|' + (firebaseMasterId || '');
+        if (_lastRenderKey === renderKey) return; // Nothing changed, skip re-render
+        _lastRenderKey = renderKey;
 
         var idTag = '<div class="device-id">' + deviceId.slice(0, 10) + '</div>';
         var othersH = buildOthersHtml();
@@ -1027,7 +1037,7 @@
         else if (myRole === "slave") {
             dynamicDiv.innerHTML =
                 idTag +
-                '<div class="role-badge role-badge-slave fade-in">ESCLAVO</div>' +
+                '<div class="role-badge role-badge-slave">ESCLAVO</div>' +
                 '<div class="led-container">' +
                     '<div class="led-body">' +
                         '<div class="led-capsule ' + (ledState ? 'on' : '') + '">' +
@@ -1078,7 +1088,7 @@
         }
         if (others.length === 0) return '';
 
-        var h = '<div class="other-devices fade-in"><div style="font-weight:700; margin-bottom:4px; color:#8899aa; font-size:0.65rem;">Otros dispositivos:</div>';
+        var h = '<div class="other-devices"><div style="font-weight:700; margin-bottom:4px; color:#8899aa; font-size:0.65rem;">Otros dispositivos:</div>';
         for (var j = 0; j < others.length; j++) {
             var o = others[j], label, cls;
             if (firebaseMasterId === o.id) { label = "Maestro"; cls = "role-label-master"; }
@@ -1166,6 +1176,7 @@
         currentRoomId = null;
         allDevices = {};
         myDeviceRef = null;
+        _lastRenderKey = null;
 
         setStatus("Desconectado");
         renderUI();
