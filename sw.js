@@ -2,7 +2,7 @@
 //  SERVICE WORKER - LED Remoto PWA
 // =========================================================
 
-const CACHE_NAME = 'led-remoto-v1.1';
+const CACHE_NAME = 'led-remoto-v1.2';
 
 // Recursos que se cachean en la instalacion
 const PRECACHE_ASSETS = [
