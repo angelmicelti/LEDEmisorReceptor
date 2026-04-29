@@ -237,6 +237,12 @@
             font-size: 0.82rem;
             border-radius: 16px;
         }
+        .btn-swap {
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+            padding: 10px 22px;
+            font-size: 0.82rem;
+            border-radius: 16px;
+        }
 
         /* ========================================================= */
         /*  MAIN AREA                                                  */
@@ -830,6 +836,36 @@
             .catch(function(e) { showError(e.message); });
     }
 
+    // =============================================================
+    //  TRANSFERIR ROL: el maestro cede su puesto al esclavo
+    //  - Pone masterId al otro dispositivo activo
+    //  - El propio dispositivo sigue activo => los listeners lo hacen esclavo
+    // =============================================================
+    function transferRoleToSlave() {
+        if (!isConnected || myRole !== "master") return;
+
+        var others = getActiveOthers();
+        if (others.length === 0) {
+            setStatus("No hay otro dispositivo activo al que transferir.");
+            return;
+        }
+
+        var targetId = others[0].id;
+        setStatus("Transfiriendo maestria a " + targetId.slice(0, 8) + "...");
+        log("Transfiriendo maestria a " + targetId.slice(0, 8) + "...");
+
+        // El truco: simplemente cambiar masterId al otro dispositivo.
+        // Los listeners de AMBAS sesiones reaccionaran:
+        //   - El otro: ve masterId === su ID => se convierte en MAESTRO
+        //   - Yo:     ve masterId !== mi ID + soy active => me convierto en ESCLAVO
+        setMasterId(targetId).then(function() {
+            vibrate(80);
+            log("Maestria transferida correctamente");
+        }).catch(function(e) {
+            showError("Error al transferir: " + e.message);
+        });
+    }
+
     function getActiveOthers() {
         var arr = [];
         var keys = Object.keys(allDevices);
@@ -867,10 +903,14 @@
                 '<div class="role-badge role-badge-master fade-in pulse-ring">MAESTRO</div>' +
                 '<button class="emitter-button" id="ledButton"></button>' +
                 '<div class="state-indicator">LED: ' + (ledState ? 'ON' : 'OFF') + '</div>' +
-                '<div class="btn-group"><button class="btn btn-release" id="releaseBtn">Liberar rol</button></div>' +
+                '<div class="btn-group">' +
+                    '<button class="btn btn-release" id="releaseBtn">Liberar rol</button>' +
+                    '<button class="btn btn-swap" id="swapBtn">Ceder a Esclavo</button>' +
+                '</div>' +
                 othersH;
             document.getElementById('ledButton').onclick = function() { vibrate(30); toggleLed(); };
             document.getElementById('releaseBtn').onclick = releaseRole;
+            document.getElementById('swapBtn').onclick = transferRoleToSlave;
             if (!statusSpan.classList.contains('status-error')) {
                 statusSpan.innerText = "Eres el MAESTRO. Pulsa para controlar el LED.";
             }
