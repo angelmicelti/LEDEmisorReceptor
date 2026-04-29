@@ -262,6 +262,7 @@
 
         /* ========================================================= */
         /*  LED — SIDE VIEW (realistic 5mm through-hole, elongated)   */
+        /*  Colors are applied via inline styles from JS (ledColorTheme) */
         /* ========================================================= */
         .led-container { display: flex; flex-direction: column; align-items: center; margin: 6px 0 4px; }
         .led-body {
@@ -285,15 +286,7 @@
                 inset 0 1px 2px rgba(255,255,255,0.3),
                 inset 0 -1px 2px rgba(0,0,0,0.15),
                 0 2px 6px rgba(0,0,0,0.25);
-            transition: background 0.15s ease, box-shadow 0.2s ease;
-        }
-        .led-flange.on {
-            background: linear-gradient(90deg, #70b870 0%, #a0e0a0 25%, #b8f0b8 50%, #a0e0a0 75%, #70b870 100%);
-            box-shadow:
-                inset 0 1px 2px rgba(255,255,255,0.3),
-                inset 0 -1px 2px rgba(0,0,0,0.1),
-                0 0 12px rgba(46,255,100,0.2),
-                0 2px 6px rgba(0,0,0,0.2);
+            transition: all 0.2s ease;
         }
 
         /* — Main capsule: continuous epoxy body (dome + cylinder as one) — */
@@ -303,7 +296,6 @@
             width: 62px;
             height: 108px;
             margin-bottom: -2px;
-            /* Dome top + straight sides tapering slightly at top */
             border-radius: 31px 31px 4px 4px / 42px 42px 4px 4px;
             background:
                 radial-gradient(ellipse at 40% 22%, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0) 38%),
@@ -312,7 +304,7 @@
                 inset 3px 4px 8px rgba(255,255,255,0.35),
                 inset -2px -2px 6px rgba(0,0,0,0.12),
                 0 6px 14px rgba(0,0,0,0.25);
-            transition: background 0.12s ease, box-shadow 0.18s ease;
+            transition: all 0.18s ease;
         }
 
         /* Cathode flat indicator on left side of capsule */
@@ -327,9 +319,8 @@
             border-radius: 2px 0 0 2px;
         }
 
-        /* Internal reflector cup — visible inside dome */
-        .led-capsule::before {
-            content: '';
+        /* — Internal reflector cup (real DOM element, colored via inline style) — */
+        .led-reflector {
             position: absolute;
             top: 12px;
             left: 50%;
@@ -339,24 +330,7 @@
             border-radius: 50% 50% 30% 30%;
             background: radial-gradient(ellipse at 50% 70%, #4a6878 0%, #2e4858 60%, #1e3440 100%);
             z-index: 1;
-            transition: background 0.15s ease, box-shadow 0.2s ease;
-        }
-
-        /* — ON state — entire capsule glows green — */
-        .led-capsule.on {
-            background:
-                radial-gradient(ellipse at 42% 20%, rgba(200,255,180,0.7) 0%, rgba(46,204,46,0.2) 40%, transparent 70%),
-                linear-gradient(178deg, #a8f098 0%, #70d860 20%, #50c840 45%, #40b830 70%, #30a020 100%);
-            box-shadow:
-                inset 3px 4px 10px rgba(255,255,255,0.45),
-                inset -2px -2px 6px rgba(0,60,0,0.18),
-                0 0 18px rgba(46,255,100,0.5),
-                0 0 45px rgba(46,255,100,0.25),
-                0 0 80px rgba(46,255,100,0.1);
-        }
-        .led-capsule.on::before {
-            background: radial-gradient(ellipse at 50% 70%, #28b828 0%, #14901a 60%, #087010 100%);
-            box-shadow: 0 0 10px rgba(46,255,100,0.45);
+            transition: all 0.2s ease;
         }
 
         /* — Leads wrapper — */
@@ -412,15 +386,44 @@
             background: radial-gradient(ellipse, rgba(200,200,200,0.06) 0%, transparent 70%);
             transition: background 0.18s ease;
         }
-        .led-surface-glow.on {
-            background: radial-gradient(ellipse, rgba(46,255,100,0.22) 0%, rgba(46,255,100,0.04) 50%, transparent 70%);
-        }
 
         .led-legend {
             display: flex; gap: 14px; justify-content: center; margin-top: 6px;
             font-size: 0.6rem; background: #00000066; padding: 3px 10px;
             border-radius: 10px; width: fit-content; margin-left: auto; margin-right: auto;
             color: #8899aa;
+        }
+
+        /* ========================================================= */
+        /*  COLOR PALETTE (master view)                                */
+        /* ========================================================= */
+        .color-palette {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin: 8px 0 2px;
+            flex-wrap: wrap;
+        }
+        .color-dot {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.15);
+            cursor: pointer;
+            transition: transform 0.12s, border-color 0.15s, box-shadow 0.15s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .color-dot:active { transform: scale(0.88); }
+        .color-dot.active {
+            border-color: white;
+            box-shadow: 0 0 8px rgba(255,255,255,0.4);
+            transform: scale(1.15);
+        }
+        .color-label {
+            font-size: 0.65rem;
+            color: #8899aa;
+            text-align: center;
+            margin-bottom: 4px;
         }
 
         /* ========================================================= */
@@ -600,6 +603,60 @@
         }
         @supports (padding-bottom: env(safe-area-inset-bottom)) {
             body { padding-bottom: env(safe-area-inset-bottom); }
+        }
+
+        /* ========================================================= */
+        /*  RESPONSIVE                                                 */
+        /* ========================================================= */
+        /* Very small phones */
+        @media (max-width: 340px) {
+            .app-container { padding: 18px 12px 22px; border-radius: 24px; }
+            h1 { font-size: 1.3rem; }
+            .emitter-button { width: 110px; height: 110px; }
+            .led-body { width: 110px; height: 180px; transform: scale(0.85); transform-origin: top center; }
+            .led-container { margin: 2px 0; }
+            .settings-panel { padding: 8px 10px; }
+            #roomIdInput { width: 80px; font-size: 0.75rem; }
+            .btn { padding: 6px 10px; font-size: 0.7rem; }
+            .btn-release, .btn-join, .btn-swap { padding: 8px 16px; font-size: 0.75rem; }
+            .color-dot { width: 24px; height: 24px; }
+            .color-palette { gap: 6px; }
+            .main-area { min-height: 260px; padding: 14px 10px; }
+        }
+        /* Standard phones */
+        @media (min-width: 341px) and (max-width: 420px) {
+            .app-container { padding: 22px 16px 26px; }
+            .emitter-button { width: 125px; height: 125px; }
+            .led-body { width: 120px; height: 196px; transform: scale(0.9); transform-origin: top center; }
+            .main-area { min-height: 290px; }
+        }
+        /* Tablets */
+        @media (min-width: 481px) and (max-width: 768px) {
+            .app-container { max-width: 480px; padding: 32px 28px; }
+            .emitter-button { width: 150px; height: 150px; }
+            .led-body { width: 150px; height: 240px; transform: scale(1.05); transform-origin: top center; }
+            .btn { padding: 8px 16px; font-size: 0.78rem; }
+            .color-dot { width: 32px; height: 32px; }
+        }
+        /* Desktop / large tablets */
+        @media (min-width: 769px) {
+            .app-container { max-width: 500px; padding: 36px 32px; }
+            .emitter-button { width: 160px; height: 160px; }
+            .led-body { width: 160px; height: 250px; transform: scale(1.1); transform-origin: top center; }
+            .color-dot { width: 34px; height: 34px; }
+        }
+        /* Landscape on phones — compact layout */
+        @media (max-height: 500px) and (orientation: landscape) {
+            body { justify-content: flex-start; padding-top: 40px !important; }
+            .app-container { padding: 12px 20px; border-radius: 20px; }
+            .main-area { min-height: auto; padding: 10px; }
+            .led-body { transform: scale(0.65); transform-origin: top center; }
+            .emitter-button { width: 90px; height: 90px; margin: 6px auto; }
+            h1 { font-size: 1.1rem; margin-bottom: 2px; }
+            .sub { margin-bottom: 10px; }
+            footer { margin-top: 8px; }
+            .btn-group { margin-top: 6px; }
+            .color-palette { margin: 4px 0; }
         }
     </style>
 </head>
@@ -863,6 +920,7 @@
     // =============================================================
     var currentRoomId = null;
     var ledState = false;
+    var ledColorIdx = 0;
     var myRole = "observer";
     var firebaseMasterId = null;
     var isConnected = false;
@@ -873,6 +931,7 @@
     var masterIdCb = null, masterIdRef = null;
     var devicesCb = null, devicesRef = null;
     var ledCb = null, ledRef = null;
+    var colorCb = null, colorRef = null;
     var allDevices = {};
 
     var roomInput = document.getElementById('roomIdInput');
@@ -1032,6 +1091,61 @@
     }
 
     // =============================================================
+    //  LED COLOR PALETTE
+    // =============================================================
+    var LED_PALETTE = [
+        { name: 'Verde',    r: 46,  g: 255, b: 100 },
+        { name: 'Rojo',     r: 255, g: 50,  b: 50  },
+        { name: 'Azul',     r: 50,  g: 130, b: 255 },
+        { name: 'Amarillo', r: 255, g: 230, b: 0   },
+        { name: 'Blanco',   r: 230, g: 235, b: 255 },
+        { name: 'Naranja',  r: 255, g: 150, b: 0   },
+        { name: 'Violeta',  r: 180, g: 60,  b: 255 },
+        { name: 'Cian',     r: 0,   g: 220, b: 255 }
+    ];
+
+    function ledColorTheme(idx, isOn) {
+        if (!isOn) return { capsule: '', flange: '', reflector: '', glow: '', stateColor: '#6b7280' };
+        var c = LED_PALETTE[idx] || LED_PALETTE[0];
+        var R = c.r, G = c.g, B = c.b;
+        function hi(v) { return Math.min(255, v + 100); }
+        function md(v) { return Math.min(255, v + 40); }
+        function lo(v) { return Math.max(0, v - 40); }
+        function dk(v) { return Math.max(0, v - 80); }
+        var rgba = function(a) { return 'rgba(' + R + ',' + G + ',' + B + ',' + a + ')'; };
+        return {
+            capsule: 'background:radial-gradient(ellipse at 42% 20%,rgba(' + hi(R) + ',' + hi(G) + ',' + hi(B) + ',0.7) 0%,' + rgba(0.2) + ' 40%,transparent 70%),linear-gradient(178deg,rgb(' + hi(R) + ',' + hi(G) + ',' + hi(B) + ') 0%,rgb(' + md(R) + ',' + md(G) + ',' + md(B) + ') 20%,rgb(' + R + ',' + G + ',' + B + ') 50%,rgb(' + lo(R) + ',' + lo(G) + ',' + lo(B) + ') 80%,rgb(' + dk(R) + ',' + dk(G) + ',' + dk(B) + ') 100%);box-shadow:inset 3px 4px 10px rgba(255,255,255,0.45),inset -2px -2px 6px rgba(0,0,0,0.18),0 0 18px ' + rgba(0.5) + ',0 0 45px ' + rgba(0.25) + ',0 0 80px ' + rgba(0.1),
+            flange: 'background:linear-gradient(90deg,rgb(' + lo(R) + ',' + lo(G) + ',' + lo(B) + ') 0%,rgb(' + md(R) + ',' + md(G) + ',' + md(B) + ') 25%,rgb(' + hi(R) + ',' + hi(G) + ',' + hi(B) + ') 50%,rgb(' + md(R) + ',' + md(G) + ',' + md(B) + ') 75%,rgb(' + lo(R) + ',' + lo(G) + ',' + lo(B) + ') 100%);box-shadow:inset 0 1px 2px rgba(255,255,255,0.3),inset 0 -1px 2px rgba(0,0,0,0.1),0 0 12px ' + rgba(0.2) + ',0 2px 6px rgba(0,0,0,0.2)',
+            reflector: 'background:radial-gradient(ellipse at 50% 70%,rgb(' + md(R) + ',' + md(G) + ',' + md(B) + ') 0%,rgb(' + R + ',' + G + ',' + B + ') 60%,rgb(' + lo(R) + ',' + lo(G) + ',' + lo(B) + ') 100%);box-shadow:0 0 10px ' + rgba(0.45),
+            glow: 'background:radial-gradient(ellipse,' + rgba(0.22) + ' 0%,' + rgba(0.04) + ' 50%,transparent 70%)',
+            stateColor: 'rgb(' + R + ',' + G + ',' + B + ')'
+        };
+    }
+
+    // =============================================================
+    //  SUBSCRIBE: LED COLOR
+    // =============================================================
+    function subscribeLedColor() {
+        if (!db || !currentRoomId) return;
+        unsubLedColor();
+        colorRef = db.ref(rp() + "/ledColorIdx");
+        colorCb = colorRef.on('value', function(snap) {
+            var v = snap.val();
+            if (typeof v === 'number' && v >= 0 && v < LED_PALETTE.length) {
+                ledColorIdx = v;
+            } else {
+                ledColorIdx = 0;
+            }
+            renderUI();
+        }, function(e) { log("Color err: " + e.message); });
+    }
+
+    function unsubLedColor() {
+        if (colorRef && colorCb) colorRef.off('value', colorCb);
+        colorRef = null; colorCb = null;
+    }
+
+    // =============================================================
     //  ACTIONS
     // =============================================================
     function toggleLed() {
@@ -1040,6 +1154,14 @@
         db.ref(rp() + "/ledState").set(next)
             .then(function() { setStatus("LED " + (next ? "ON" : "OFF")); })
             .catch(function(e) { showError("LED err: " + e.message); });
+    }
+
+    function setLedColor(idx) {
+        if (myRole !== "master") return;
+        ledColorIdx = idx;
+        db.ref(rp() + "/ledColorIdx").set(idx)
+            .then(function() { setStatus("Color: " + LED_PALETTE[idx].name); vibrate(20); })
+            .catch(function(e) { showError("Color err: " + e.message); });
     }
 
     function releaseRole() {
@@ -1129,19 +1251,53 @@
 
         // Build a key from all data that affects rendering
         var othersKeys = Object.keys(allDevices).sort().join(',');
-        var renderKey = myRole + '|' + (ledState ? '1' : '0') + '|' + othersKeys + '|' + (firebaseMasterId || '');
+        var renderKey = myRole + '|' + (ledState ? '1' : '0') + '|' + ledColorIdx + '|' + othersKeys + '|' + (firebaseMasterId || '');
         if (_lastRenderKey === renderKey) return; // Nothing changed, skip re-render
         _lastRenderKey = renderKey;
 
         var idTag = '<div class="device-id">' + deviceId.slice(0, 10) + '</div>';
         var othersH = buildOthersHtml();
+        var theme = ledColorTheme(ledColorIdx, ledState);
+
+        // Build color palette HTML for master
+        var paletteH = '';
+        if (myRole === 'master') {
+            paletteH = '<div class="color-label">Color del LED</div><div class="color-palette">';
+            for (var ci = 0; ci < LED_PALETTE.length; ci++) {
+                var cc = LED_PALETTE[ci];
+                paletteH += '<div class="color-dot' + (ci === ledColorIdx ? ' active' : '') + '" data-ci="' + ci + '" style="background:rgb(' + cc.r + ',' + cc.g + ',' + cc.b + ');box-shadow:0 2px 8px rgba(' + cc.r + ',' + cc.g + ',' + cc.b + ',0.4);"></div>';
+            }
+            paletteH += '</div>';
+        }
+
+        // Build LED visual HTML (shared for slave & observer)
+        function ledVisualHtml(theme) {
+            return '<div class="led-container">' +
+                '<div class="led-body">' +
+                    '<div class="led-capsule" style="' + theme.capsule + '">' +
+                        '<div class="led-reflector" style="' + theme.reflector + '"></div>' +
+                    '</div>' +
+                    '<div class="led-flange" style="' + theme.flange + '"></div>' +
+                    '<div class="led-leads">' +
+                        '<div class="led-lead led-lead-anode"><div class="led-lead-label led-lead-label-anode">+ Anodo</div></div>' +
+                        '<div class="led-lead led-lead-cathode"><div class="led-lead-label led-lead-label-cathode">- Catodo</div></div>' +
+                    '</div>' +
+                    '<div class="led-surface-glow" style="' + theme.glow + '"></div>' +
+                '</div>' +
+                '<div class="led-legend">Anodo largo (+) &bull; Catodo corto (-)</div>' +
+                '<div style="margin:2px 0; font-size:0.92rem; font-weight:700; color:' + theme.stateColor + ';">' +
+                    (ledState ? 'ENCENDIDO' : 'APAGADO') +
+                '</div>' +
+            '</div>';
+        }
 
         if (myRole === "master") {
             dynamicDiv.innerHTML =
                 idTag +
                 '<div class="role-badge role-badge-master fade-in pulse-ring">MAESTRO</div>' +
                 '<button class="emitter-button" id="ledButton"></button>' +
-                '<div class="state-indicator">LED: ' + (ledState ? 'ON' : 'OFF') + '</div>' +
+                '<div class="state-indicator">LED: ' + (ledState ? 'ON' : 'OFF') + ' &mdash; ' + LED_PALETTE[ledColorIdx].name + '</div>' +
+                paletteH +
                 '<div class="btn-group">' +
                     '<button class="btn btn-release" id="releaseBtn">Liberar rol</button>' +
                     '<button class="btn btn-swap" id="swapBtn">Ceder a Esclavo</button>' +
@@ -1150,6 +1306,15 @@
             document.getElementById('ledButton').onclick = function() { vibrate(30); toggleLed(); };
             document.getElementById('releaseBtn').onclick = releaseRole;
             document.getElementById('swapBtn').onclick = transferRoleToSlave;
+            // Bind color dots
+            var dots = dynamicDiv.querySelectorAll('.color-dot');
+            for (var di = 0; di < dots.length; di++) {
+                (function(dot) {
+                    dot.addEventListener('click', function() {
+                        setLedColor(parseInt(dot.getAttribute('data-ci')));
+                    });
+                })(dots[di]);
+            }
             if (!statusSpan.classList.contains('status-error')) {
                 statusSpan.innerText = "Eres el MAESTRO. Pulsa para controlar el LED.";
             }
@@ -1158,21 +1323,7 @@
             dynamicDiv.innerHTML =
                 idTag +
                 '<div class="role-badge role-badge-slave">ESCLAVO</div>' +
-                '<div class="led-container">' +
-                    '<div class="led-body">' +
-                        '<div class="led-capsule ' + (ledState ? 'on' : '') + '"></div>' +
-                        '<div class="led-flange ' + (ledState ? 'on' : '') + '"></div>' +
-                        '<div class="led-leads">' +
-                            '<div class="led-lead led-lead-anode"><div class="led-lead-label led-lead-label-anode">+ Anodo</div></div>' +
-                            '<div class="led-lead led-lead-cathode"><div class="led-lead-label led-lead-label-cathode">- Catodo</div></div>' +
-                        '</div>' +
-                        '<div class="led-surface-glow ' + (ledState ? 'on' : '') + '"></div>' +
-                    '</div>' +
-                    '<div class="led-legend">Anodo largo (+) &nbsp;&bull;&nbsp; Catodo corto (-)</div>' +
-                    '<div style="margin:2px 0; font-size:0.92rem; font-weight:700; color:' + (ledState ? '#4ade80' : '#6b7280') + ';">' +
-                        (ledState ? 'ENCENDIDO' : 'APAGADO') +
-                    '</div>' +
-                '</div>' +
+                ledVisualHtml(theme) +
                 '<div class="btn-group"><button class="btn btn-release" id="releaseBtn">Liberar rol</button></div>' +
                 othersH;
             document.getElementById('releaseBtn').onclick = releaseRole;
@@ -1187,7 +1338,7 @@
                 '<div class="observer-view">' +
                     '<p style="color:#7a9bb0; font-size:0.82rem; margin:6px 0 0;">No participas activamente</p>' +
                     '<p style="color:#4a6a7e; font-size:0.72rem; margin:0;">Pulsa el boton para unirte</p>' +
-                    '<div style="margin-top:4px; font-size:0.78rem; color:' + (ledState ? '#4ade80' : '#6b7280') + ';">' +
+                    '<div style="margin-top:4px; font-size:0.78rem; color:' + theme.stateColor + ';">' +
                         'LED: ' + (ledState ? 'ON' : 'OFF') +
                     '</div>' +
                 '</div>' +
@@ -1255,6 +1406,7 @@
         }).then(function() {
             subscribeDevices();
             subscribeLed();
+            subscribeLedColor();
             subscribeMasterId();
             isConnected = true;
 
@@ -1289,6 +1441,7 @@
         unsubDevices();
         unsubLed();
         unsubMaster();
+        unsubLedColor();
 
         isConnected = false;
         myRole = "observer";
@@ -1297,6 +1450,7 @@
         allDevices = {};
         myDeviceRef = null;
         _lastRenderKey = null;
+        ledColorIdx = 0;
 
         setStatus("Desconectado");
         renderUI();
