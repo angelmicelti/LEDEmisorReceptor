@@ -395,35 +395,30 @@
         }
 
         /* ========================================================= */
-        /*  COLOR PALETTE (master view)                                */
+        /*  LED TAP-TO-CYCLE (clickable LED on slave/receiver view)   */
         /* ========================================================= */
-        .color-palette {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-            margin: 8px 0 2px;
-            flex-wrap: wrap;
-        }
-        .color-dot {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            border: 2px solid rgba(255,255,255,0.15);
+        .led-body.tappable {
             cursor: pointer;
-            transition: transform 0.12s, border-color 0.15s, box-shadow 0.15s;
             -webkit-tap-highlight-color: transparent;
+            transition: transform 0.12s ease;
         }
-        .color-dot:active { transform: scale(0.88); }
-        .color-dot.active {
-            border-color: white;
-            box-shadow: 0 0 8px rgba(255,255,255,0.4);
-            transform: scale(1.15);
+        .led-body.tappable:active {
+            transform: scale(0.95) !important;
         }
-        .color-label {
-            font-size: 0.65rem;
-            color: #8899aa;
+        @keyframes colorPop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.06); }
+            100% { transform: scale(1); }
+        }
+        .led-pop {
+            animation: colorPop 0.22s ease;
+        }
+        .led-tap-hint {
+            font-size: 0.62rem;
+            color: #5a7a8e;
             text-align: center;
-            margin-bottom: 4px;
+            margin-top: 2px;
+            opacity: 0.7;
         }
 
         /* ========================================================= */
@@ -616,12 +611,14 @@
             .led-body { width: 110px; height: 180px; transform: scale(0.85); transform-origin: top center; }
             .led-container { margin: 2px 0; }
             .settings-panel { padding: 8px 10px; }
-            #roomIdInput { width: 80px; font-size: 0.75rem; }
+            .room-control { flex-wrap: wrap; justify-content: center; }
+            #roomIdInput { width: 90px; font-size: 0.75rem; }
             .btn { padding: 6px 10px; font-size: 0.7rem; }
             .btn-release, .btn-join, .btn-swap { padding: 8px 16px; font-size: 0.75rem; }
-            .color-dot { width: 24px; height: 24px; }
-            .color-palette { gap: 6px; }
             .main-area { min-height: 260px; padding: 14px 10px; }
+            .led-legend { font-size: 0.52rem; }
+            .led-lead-label { font-size: 0.52rem; }
+            .state-indicator { font-size: 0.9rem; }
         }
         /* Standard phones */
         @media (min-width: 341px) and (max-width: 420px) {
@@ -630,33 +627,73 @@
             .led-body { width: 120px; height: 196px; transform: scale(0.9); transform-origin: top center; }
             .main-area { min-height: 290px; }
         }
+        /* Large phones / small tablets */
+        @media (min-width: 421px) and (max-width: 520px) {
+            .app-container { padding: 26px 20px 30px; }
+            .emitter-button { width: 140px; height: 140px; }
+        }
         /* Tablets */
-        @media (min-width: 481px) and (max-width: 768px) {
+        @media (min-width: 521px) and (max-width: 768px) {
             .app-container { max-width: 480px; padding: 32px 28px; }
             .emitter-button { width: 150px; height: 150px; }
             .led-body { width: 150px; height: 240px; transform: scale(1.05); transform-origin: top center; }
             .btn { padding: 8px 16px; font-size: 0.78rem; }
-            .color-dot { width: 32px; height: 32px; }
         }
         /* Desktop / large tablets */
         @media (min-width: 769px) {
             .app-container { max-width: 500px; padding: 36px 32px; }
             .emitter-button { width: 160px; height: 160px; }
             .led-body { width: 160px; height: 250px; transform: scale(1.1); transform-origin: top center; }
-            .color-dot { width: 34px; height: 34px; }
         }
         /* Landscape on phones — compact layout */
         @media (max-height: 500px) and (orientation: landscape) {
             body { justify-content: flex-start; padding-top: 40px !important; }
-            .app-container { padding: 12px 20px; border-radius: 20px; }
-            .main-area { min-height: auto; padding: 10px; }
-            .led-body { transform: scale(0.65); transform-origin: top center; }
+            .app-container { padding: 10px 16px; border-radius: 20px; }
+            .main-area { min-height: auto; padding: 8px 6px; margin: 8px 0; }
+            .led-body { transform: scale(0.6); transform-origin: top center; }
             .emitter-button { width: 90px; height: 90px; margin: 6px auto; }
             h1 { font-size: 1.1rem; margin-bottom: 2px; }
-            .sub { margin-bottom: 10px; }
-            footer { margin-top: 8px; }
+            .sub { margin-bottom: 8px; font-size: 0.7rem; }
+            footer { margin-top: 6px; display: none; }
             .btn-group { margin-top: 6px; }
-            .color-palette { margin: 4px 0; }
+            .status-msg { margin-top: 8px; min-height: 24px; font-size: 0.62rem; }
+            .settings-panel { margin-bottom: 10px; padding: 6px 10px; gap: 5px; }
+            .role-badge { margin-bottom: 6px; }
+            .other-devices { margin-top: 6px; }
+            .led-legend { display: none; }
+            .led-tap-hint { display: none; }
+        }
+        /* Very small landscape (e.g. Galaxy Fold) */
+        @media (max-height: 400px) and (orientation: landscape) {
+            .app-container { padding: 6px 12px; border-radius: 16px; }
+            .led-body { transform: scale(0.5); transform-origin: top center; }
+            .emitter-button { width: 70px; height: 70px; }
+            .state-indicator { margin-top: 4px; font-size: 0.85rem; padding: 4px 10px; }
+            .main-area { min-height: auto; padding: 4px; }
+        }
+        /* High-DPI / Retina sharpening */
+        @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+            .led-capsule { box-shadow: inset 3px 4px 8px rgba(255,255,255,0.35), inset -2px -2px 6px rgba(0,0,0,0.12), 0 6px 14px rgba(0,0,0,0.25); }
+        }
+        /* Hover effects — desktop only (no hover on touch) */
+        @media (hover: hover) and (pointer: fine) {
+            .led-body.tappable:hover .led-capsule { filter: brightness(1.08); }
+            .emitter-button:hover { filter: brightness(1.1); }
+        }
+        /* Touch-optimized: larger hit areas */
+        @media (pointer: coarse) {
+            .btn { min-height: 38px; }
+            .led-body.tappable { padding: 8px; margin: -8px; }
+            .btn-release, .btn-join, .btn-swap { min-height: 42px; }
+        }
+        /* Dark mode preference (already dark, but ensure black bg) */
+        @media (prefers-color-scheme: dark) {
+            body { background: linear-gradient(145deg, #111d2b 0%, #0a1118 100%); }
+        }
+        /* Reduced motion preference */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+            .pulse-ring { animation: none; }
         }
     </style>
 </head>
@@ -1157,11 +1194,22 @@
     }
 
     function setLedColor(idx) {
-        if (myRole !== "master") return;
         ledColorIdx = idx;
         db.ref(rp() + "/ledColorIdx").set(idx)
             .then(function() { setStatus("Color: " + LED_PALETTE[idx].name); vibrate(20); })
             .catch(function(e) { showError("Color err: " + e.message); });
+    }
+
+    function cycleLedColor() {
+        var next = (ledColorIdx + 1) % LED_PALETTE.length;
+        setLedColor(next);
+        // Visual pop feedback on the LED
+        var ledBody = dynamicDiv.querySelector('.led-body');
+        if (ledBody) {
+            ledBody.classList.remove('led-pop');
+            void ledBody.offsetWidth; // reflow
+            ledBody.classList.add('led-pop');
+        }
     }
 
     function releaseRole() {
@@ -1259,21 +1307,13 @@
         var othersH = buildOthersHtml();
         var theme = ledColorTheme(ledColorIdx, ledState);
 
-        // Build color palette HTML for master
-        var paletteH = '';
-        if (myRole === 'master') {
-            paletteH = '<div class="color-label">Color del LED</div><div class="color-palette">';
-            for (var ci = 0; ci < LED_PALETTE.length; ci++) {
-                var cc = LED_PALETTE[ci];
-                paletteH += '<div class="color-dot' + (ci === ledColorIdx ? ' active' : '') + '" data-ci="' + ci + '" style="background:rgb(' + cc.r + ',' + cc.g + ',' + cc.b + ');box-shadow:0 2px 8px rgba(' + cc.r + ',' + cc.g + ',' + cc.b + ',0.4);"></div>';
-            }
-            paletteH += '</div>';
-        }
+        // Build color palette HTML (only for slave — tap on LED)
+        // Master view no longer has color palette; slave taps LED to cycle
 
         // Build LED visual HTML (shared for slave & observer)
-        function ledVisualHtml(theme) {
+        function ledVisualHtml(theme, tappable) {
             return '<div class="led-container">' +
-                '<div class="led-body">' +
+                '<div class="led-body' + (tappable ? ' tappable' : '') + '"' + (tappable ? ' id="ledTapArea"' : '') + '>' +
                     '<div class="led-capsule" style="' + theme.capsule + '">' +
                         '<div class="led-reflector" style="' + theme.reflector + '"></div>' +
                     '</div>' +
@@ -1284,9 +1324,10 @@
                     '</div>' +
                     '<div class="led-surface-glow" style="' + theme.glow + '"></div>' +
                 '</div>' +
+                (tappable ? '<div class="led-tap-hint">Toca el LED para cambiar color</div>' : '') +
                 '<div class="led-legend">Anodo largo (+) &bull; Catodo corto (-)</div>' +
                 '<div style="margin:2px 0; font-size:0.92rem; font-weight:700; color:' + theme.stateColor + ';">' +
-                    (ledState ? 'ENCENDIDO' : 'APAGADO') +
+                    (ledState ? 'ENCENDIDO' : 'APAGADO') + ' &mdash; ' + LED_PALETTE[ledColorIdx].name +
                 '</div>' +
             '</div>';
         }
@@ -1297,7 +1338,6 @@
                 '<div class="role-badge role-badge-master fade-in pulse-ring">MAESTRO</div>' +
                 '<button class="emitter-button" id="ledButton"></button>' +
                 '<div class="state-indicator">LED: ' + (ledState ? 'ON' : 'OFF') + ' &mdash; ' + LED_PALETTE[ledColorIdx].name + '</div>' +
-                paletteH +
                 '<div class="btn-group">' +
                     '<button class="btn btn-release" id="releaseBtn">Liberar rol</button>' +
                     '<button class="btn btn-swap" id="swapBtn">Ceder a Esclavo</button>' +
@@ -1306,15 +1346,6 @@
             document.getElementById('ledButton').onclick = function() { vibrate(30); toggleLed(); };
             document.getElementById('releaseBtn').onclick = releaseRole;
             document.getElementById('swapBtn').onclick = transferRoleToSlave;
-            // Bind color dots
-            var dots = dynamicDiv.querySelectorAll('.color-dot');
-            for (var di = 0; di < dots.length; di++) {
-                (function(dot) {
-                    dot.addEventListener('click', function() {
-                        setLedColor(parseInt(dot.getAttribute('data-ci')));
-                    });
-                })(dots[di]);
-            }
             if (!statusSpan.classList.contains('status-error')) {
                 statusSpan.innerText = "Eres el MAESTRO. Pulsa para controlar el LED.";
             }
@@ -1323,10 +1354,18 @@
             dynamicDiv.innerHTML =
                 idTag +
                 '<div class="role-badge role-badge-slave">ESCLAVO</div>' +
-                ledVisualHtml(theme) +
+                ledVisualHtml(theme, true) +
                 '<div class="btn-group"><button class="btn btn-release" id="releaseBtn">Liberar rol</button></div>' +
                 othersH;
             document.getElementById('releaseBtn').onclick = releaseRole;
+            // Bind tap on LED to cycle color
+            var ledTapArea = document.getElementById('ledTapArea');
+            if (ledTapArea) {
+                ledTapArea.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    cycleLedColor();
+                });
+            }
             if (!statusSpan.classList.contains('status-error')) {
                 statusSpan.innerText = "Eres el ESCLAVO. El Maestro controla tu LED.";
             }
