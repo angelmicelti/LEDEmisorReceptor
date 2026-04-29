@@ -1,0 +1,49 @@
+{
+    "name": "LED Remoto - Maestro/Esclavo",
+    "short_name": "LED Remoto",
+    "description": "Sistema de control LED remoto con roles Maestro-Esclavo en tiempo real mediante Firebase",
+    "start_url": "./index.html",
+    "scope": "./",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#0f1a24",
+    "theme_color": "#0f1a24",
+    "lang": "es",
+    "dir": "ltr",
+    "categories": ["utilities", "iot"],
+    "icons": [
+        {
+            "src": "icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "icons/icon-192-maskable.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/icon-512-maskable.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "screenshots": [],
+    "shortcuts": [
+        {
+            "name": "Sala por defecto",
+            "short_name": "sala_prueba",
+            "url": "./index.html?room=sala_prueba",
+            "description": "Conectar directamente a la sala de prueba"
+        }
+    ]
+}
