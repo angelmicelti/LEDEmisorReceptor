@@ -665,6 +665,18 @@
     function setMasterId(id) { return db.ref(rp() + "/masterId").set(id || null); }
     function setMyRole(r) { return db.ref(rp() + "/devices/" + deviceId + "/role").set(r); }
 
+    // =============================================================
+    //  VALIDATE MASTER: si el maestro ya no existe, limpiar masterId
+    // =============================================================
+    function validateAndCleanMaster() {
+        if (!firebaseMasterId) return; // ya es null, nada que hacer
+        if (!allDevices[firebaseMasterId]) {
+            // El maestro no esta en la lista de dispositivos conectados
+            log("Maestro " + firebaseMasterId.slice(0,8) + "... no existe. Limpiando masterId.");
+            setMasterId(null);
+        }
+    }
+
     function doHeartbeat() {
         if (!isConnected || !currentRoomId) return;
         db.ref(rp() + "/devices/" + deviceId + "/timestamp")
@@ -684,6 +696,14 @@
             var mId = snap.val();
             firebaseMasterId = mId;
 
+            // Verificar si el maestro existe realmente
+            if (mId && mId !== deviceId && !allDevices[mId]) {
+                // Maestro fantasma: limpiar y esperar al siguiente callback
+                log("masterId fantasma detectado, limpiando...");
+                setMasterId(null);
+                return;
+            }
+
             if (mId === deviceId) {
                 if (myRole !== "master") { myRole = "master"; setMyRole("active"); }
                 renderUI(); return;
@@ -693,6 +713,7 @@
                 myRole = (d && d.role === "active") ? "slave" : "observer";
                 renderUI(); return;
             }
+            // masterId es null: no hay maestro
             var d2 = allDevices[deviceId];
             if (d2 && d2.role === "active") { claimMastership(); }
             else { myRole = "observer"; renderUI(); }
@@ -734,6 +755,9 @@
         devicesCb = devicesRef.on('value', function(snap) {
             allDevices = snap.val() || {};
             var d = allDevices[deviceId];
+
+            // --- VALIDACION CRITICA: limpiar maestro fantasma ---
+            validateAndCleanMaster();
 
             if (d && d.role === "neutral" && myRole !== "master") {
                 if (myRole !== "observer") myRole = "observer";
@@ -936,6 +960,19 @@
             role: "active"
         }).then(function() {
             return myDeviceRef.onDisconnect().remove();
+        }).then(function() {
+            // Limpiar maestro fantasma ANTES de suscribirse
+            return db.ref(rp() + "/devices").once('value').then(function(snap) {
+                var devices = snap.val() || {};
+                var currentMaster = null;
+                return db.ref(rp() + "/masterId").once('value').then(function(mSnap) {
+                    currentMaster = mSnap.val();
+                    if (currentMaster && !devices[currentMaster]) {
+                        log("Limpieza inicial: maestro fantasma " + currentMaster.slice(0,8) + " eliminado");
+                        return setMasterId(null);
+                    }
+                });
+            });
         }).then(function() {
             subscribeDevices();
             subscribeLed();
