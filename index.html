@@ -395,7 +395,7 @@
         }
 
         /* ========================================================= */
-        /*  LED TAP-TO-CYCLE (clickable LED on slave/receiver view)   */
+        /*  LED TAP + CIRCULAR COLOR PICKER (slave/receiver view)     */
         /* ========================================================= */
         .led-body.tappable {
             cursor: pointer;
@@ -403,15 +403,7 @@
             transition: transform 0.12s ease;
         }
         .led-body.tappable:active {
-            transform: scale(0.95) !important;
-        }
-        @keyframes colorPop {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.06); }
-            100% { transform: scale(1); }
-        }
-        .led-pop {
-            animation: colorPop 0.22s ease;
+            transform: scale(0.97) !important;
         }
         .led-tap-hint {
             font-size: 0.62rem;
@@ -419,6 +411,89 @@
             text-align: center;
             margin-top: 2px;
             opacity: 0.7;
+            transition: opacity 0.2s ease;
+        }
+        .led-tap-hint.hidden { opacity: 0; }
+
+        /* — Color wheel overlay — */
+        .color-wheel-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.55);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+        .color-wheel-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        @keyframes wheelPop {
+            0% { transform: scale(0.4); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes wheelOut {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(0.4); opacity: 0; }
+        }
+        .color-wheel {
+            position: relative;
+            width: 200px;
+            height: 200px;
+        }
+        .color-wheel-overlay.open .color-wheel {
+            animation: wheelPop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        /* Center label */
+        .color-wheel-center {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 56px; height: 56px;
+            border-radius: 50%;
+            background: #0f1a24;
+            border: 2px solid rgba(255,255,255,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.55rem;
+            color: #6c8ea0;
+            font-weight: 700;
+            pointer-events: none;
+            z-index: 3;
+        }
+        /* Individual color dot in wheel */
+        .wheel-dot {
+            position: absolute;
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            border: 3px solid rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+            -webkit-tap-highlight-color: transparent;
+            z-index: 2;
+        }
+        .wheel-dot:active {
+            transform: scale(0.85);
+        }
+        .wheel-dot.active {
+            border-color: white;
+            box-shadow: 0 0 12px rgba(255,255,255,0.5);
+            transform: scale(1.15);
+        }
+        /* Outer ring decoration */
+        .color-wheel-ring {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 190px; height: 190px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            border: 1px solid rgba(255,255,255,0.08);
+            pointer-events: none;
         }
 
         /* ========================================================= */
@@ -694,6 +769,13 @@
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
             .pulse-ring { animation: none; }
+        }
+        /* Color wheel responsive sizing */
+        @media (max-width: 340px) {
+            .color-wheel { width: 160px; height: 160px; }
+            .wheel-dot { width: 30px; height: 30px; }
+            .color-wheel-center { width: 44px; height: 44px; font-size: 0.48rem; }
+            .color-wheel-ring { width: 152px; height: 152px; }
         }
     </style>
 </head>
@@ -1200,16 +1282,95 @@
             .catch(function(e) { showError("Color err: " + e.message); });
     }
 
-    function cycleLedColor() {
-        var next = (ledColorIdx + 1) % LED_PALETTE.length;
-        setLedColor(next);
-        // Visual pop feedback on the LED
-        var ledBody = dynamicDiv.querySelector('.led-body');
-        if (ledBody) {
-            ledBody.classList.remove('led-pop');
-            void ledBody.offsetWidth; // reflow
-            ledBody.classList.add('led-pop');
+    // =============================================================
+    //  COLOR WHEEL: show/hide circular color picker overlay
+    // =============================================================
+    var _colorWheelEl = null;
+    var _colorWheelOpen = false;
+
+    function buildColorWheel() {
+        // Remove existing if any
+        var old = document.getElementById('colorWheelOverlay');
+        if (old) old.remove();
+
+        var n = LED_PALETTE.length;
+        var isSmall = window.innerWidth <= 340;
+        var radius = isSmall ? 56 : 72; // distance from center to dot center
+        var dotSize = isSmall ? 30 : 38;
+
+        var html = '<div class="color-wheel" id="colorWheelInner">' +
+            '<div class="color-wheel-ring"></div>' +
+            '<div class="color-wheel-center">Color</div>';
+
+        for (var i = 0; i < n; i++) {
+            var c = LED_PALETTE[i];
+            var angle = (2 * Math.PI * i / n) - Math.PI / 2; // start from top
+            var x = Math.cos(angle) * radius - dotSize / 2;
+            var y = Math.sin(angle) * radius - dotSize / 2;
+            var isActive = (i === ledColorIdx) ? ' active' : '';
+            html += '<div class="wheel-dot' + isActive + '" data-ci="' + i + '" style="' +
+                'left:calc(50% + ' + x.toFixed(1) + 'px);' +
+                'top:calc(50% + ' + y.toFixed(1) + 'px);' +
+                'background:rgb(' + c.r + ',' + c.g + ',' + c.b + ');' +
+                'box-shadow:0 2px 10px rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.45);">' +
+                '</div>';
         }
+        html += '</div>';
+
+        var overlay = document.createElement('div');
+        overlay.className = 'color-wheel-overlay';
+        overlay.id = 'colorWheelOverlay';
+        overlay.innerHTML = html;
+        document.body.appendChild(overlay);
+        _colorWheelEl = overlay;
+
+        // Close on background tap
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) closeColorWheel();
+        });
+
+        // Bind dots
+        var dots = overlay.querySelectorAll('.wheel-dot');
+        for (var di = 0; di < dots.length; di++) {
+            (function(dot) {
+                dot.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var idx = parseInt(dot.getAttribute('data-ci'));
+                    setLedColor(idx);
+                    // Update active state
+                    var all = overlay.querySelectorAll('.wheel-dot');
+                    for (var ai = 0; ai < all.length; ai++) all[ai].classList.remove('active');
+                    dot.classList.add('active');
+                    vibrate(25);
+                    setTimeout(closeColorWheel, 180);
+                });
+            })(dots[di]);
+        }
+    }
+
+    function openColorWheel() {
+        if (_colorWheelOpen) return;
+        _colorWheelOpen = true;
+        buildColorWheel();
+        // Force reflow before adding class for animation
+        void _colorWheelEl.offsetWidth;
+        _colorWheelEl.classList.add('open');
+        var hint = dynamicDiv.querySelector('.led-tap-hint');
+        if (hint) hint.classList.add('hidden');
+    }
+
+    function closeColorWheel() {
+        if (!_colorWheelOpen || !_colorWheelEl) return;
+        _colorWheelOpen = false;
+        _colorWheelEl.classList.remove('open');
+        var hint = dynamicDiv.querySelector('.led-tap-hint');
+        if (hint) hint.classList.remove('hidden');
+        setTimeout(function() {
+            if (!_colorWheelOpen && _colorWheelEl) {
+                _colorWheelEl.remove();
+                _colorWheelEl = null;
+            }
+        }, 280);
     }
 
     function releaseRole() {
@@ -1324,7 +1485,7 @@
                     '</div>' +
                     '<div class="led-surface-glow" style="' + theme.glow + '"></div>' +
                 '</div>' +
-                (tappable ? '<div class="led-tap-hint">Toca el LED para cambiar color</div>' : '') +
+                (tappable ? '<div class="led-tap-hint">Toca el LED para elegir color</div>' : '') +
                 '<div class="led-legend">Anodo largo (+) &bull; Catodo corto (-)</div>' +
                 '<div style="margin:2px 0; font-size:0.92rem; font-weight:700; color:' + theme.stateColor + ';">' +
                     (ledState ? 'ENCENDIDO' : 'APAGADO') + ' &mdash; ' + LED_PALETTE[ledColorIdx].name +
@@ -1358,12 +1519,12 @@
                 '<div class="btn-group"><button class="btn btn-release" id="releaseBtn">Liberar rol</button></div>' +
                 othersH;
             document.getElementById('releaseBtn').onclick = releaseRole;
-            // Bind tap on LED to cycle color
+            // Bind tap on LED to open color wheel
             var ledTapArea = document.getElementById('ledTapArea');
             if (ledTapArea) {
                 ledTapArea.addEventListener('click', function(e) {
                     e.preventDefault();
-                    cycleLedColor();
+                    openColorWheel();
                 });
             }
             if (!statusSpan.classList.contains('status-error')) {
@@ -1481,6 +1642,7 @@
         unsubLed();
         unsubMaster();
         unsubLedColor();
+        closeColorWheel();
 
         isConnected = false;
         myRole = "observer";
