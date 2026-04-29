@@ -423,6 +423,55 @@
         .offline-overlay.visible { transform: translateY(0); }
 
         /* ========================================================= */
+        /*  UPDATE BANNER                                              */
+        /* ========================================================= */
+        .update-banner {
+            position: fixed;
+            top: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1001;
+            background: linear-gradient(135deg, #1e3a5f, #2a4a6f);
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            border-radius: 16px;
+            padding: 10px 14px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+            animation: slideDown 0.4s ease;
+        }
+        .update-banner.hidden { display: none; }
+        .update-banner-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .update-icon {
+            color: #60a5fa;
+            animation: spin 3s linear infinite;
+        }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .update-banner-text {
+            flex: 1;
+            font-size: 0.78rem;
+            color: #bbd4f0;
+            line-height: 1.3;
+        }
+        .update-banner-text strong { color: white; font-size: 0.82rem; }
+        .btn-update {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border: none;
+            border-radius: 12px;
+            padding: 8px 16px;
+            color: white;
+            font-weight: 700;
+            font-size: 0.75rem;
+            cursor: pointer;
+            white-space: nowrap;
+            font-family: inherit;
+            transition: transform 0.1s;
+        }
+        .btn-update:active { transform: scale(0.96); }
+
+        /* ========================================================= */
         /*  RESPONSIVE / SAFE AREAS                                    */
         /* ========================================================= */
         @supports (padding-top: env(safe-area-inset-top)) {
@@ -476,6 +525,19 @@
     </footer>
 </div>
 
+<!-- Update Banner (hidden by default) -->
+<div class="update-banner hidden" id="updateBanner">
+    <div class="update-banner-content">
+        <span class="update-icon" style="font-size:1.4rem;">&#8635;</span>
+        <div class="update-banner-text">
+            <strong>Nueva version disponible</strong><br>
+            <span style="font-size:0.68rem; opacity:0.8;">Pulsa para actualizar</span>
+        </div>
+        <button class="btn-update" id="updateBtn">Actualizar</button>
+        <button class="btn-dismiss" id="updateDismissBtn">&times;</button>
+    </div>
+</div>
+
 <!-- Offline Banner -->
 <div class="offline-overlay" id="offlineOverlay">
     Sin conexion a internet. La app funciona con datos cacheados, pero el control en tiempo real requiere conexion.
@@ -488,32 +550,79 @@
     // =============================================================
     //  1. SERVICE WORKER REGISTRATION
     // =============================================================
+    var _updateBannerShown = false;
+
+    function showUpdateBanner() {
+        if (_updateBannerShown) return;
+        _updateBannerShown = true;
+        var banner = document.getElementById('updateBanner');
+        if (banner) banner.classList.remove('hidden');
+        log('[PWA] Mostrando banner de actualizacion');
+    }
+
+    function applyUpdate() {
+        if (navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
+        }
+    }
+
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', function() {
             navigator.serviceWorker.register('./sw.js', { scope: './' })
                 .then(function(reg) {
                     console.log('[PWA] Service Worker registrado, scope:', reg.scope);
 
-                    // Comprobar si hay una nueva version del SW esperando
+                    // Detectar cuando un nuevo SW se instala y queda en espera
                     reg.addEventListener('updatefound', function() {
                         var newWorker = reg.installing;
+                        console.log('[PWA] Nuevo SW encontrado, estado:', newWorker.state);
+
                         newWorker.addEventListener('statechange', function() {
                             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                console.log('[PWA] Nueva version disponible');
+                                // Hay un SW nuevo esperando => mostrar aviso
+                                console.log('[PWA] Nueva version disponible (waiting)');
+                                showUpdateBanner();
                             }
                         });
                     });
+
+                    // Comprobar si ya habia un SW esperando al cargar la pagina
+                    if (reg.waiting) {
+                        console.log('[PWA] SW ya estaba esperando al cargar');
+                        showUpdateBanner();
+                    }
                 })
                 .catch(function(err) {
                     console.warn('[PWA] Error registrando SW:', err.message);
                 });
 
-            // Escuchar cuando el SW toma control (para recargar si hay nueva version)
+            // Escuchar mensajes del SW (notificacion de actualizacion)
+            navigator.serviceWorker.addEventListener('message', function(event) {
+                if (event.data && event.data.type === 'SW_UPDATE_AVAILABLE') {
+                    console.log('[PWA] Notificacion de actualizacion recibida:', event.data.version);
+                    showUpdateBanner();
+                    // Avisar al SW que ya recibimos el mensaje
+                    if (navigator.serviceWorker.controller) {
+                        navigator.serviceWorker.controller.postMessage({ type: 'ACK_UPDATE' });
+                    }
+                }
+            });
+
+            // Cuando el SW toma control => recargar para usar la nueva version
             navigator.serviceWorker.addEventListener('controllerchange', function() {
-                console.log('[PWA] Nuevo Service Worker activo');
+                console.log('[PWA] Nuevo Service Worker activo, recargando...');
+                window.location.reload();
             });
         });
     }
+
+    // Enlazar botones del banner de actualizacion
+    var updateBtn = document.getElementById('updateBtn');
+    var updateDismissBtn = document.getElementById('updateDismissBtn');
+    if (updateBtn) updateBtn.addEventListener('click', applyUpdate);
+    if (updateDismissBtn) updateDismissBtn.addEventListener('click', function() {
+        document.getElementById('updateBanner').classList.add('hidden');
+    });
 
     // =============================================================
     //  2. ONLINE / OFFLINE DETECTION
