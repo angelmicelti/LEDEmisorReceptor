@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LED Remoto</title>
+
+    <!-- ===================== PWA META TAGS ===================== -->
+    <meta name="description" content="Sistema de control LED remoto con roles Maestro-Esclavo en tiempo real">
+    <meta name="theme-color" content="#0f1a24">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="LED Remoto">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="LED Remoto">
+    <meta name="msapplication-TileColor" content="#0f1a24">
+    <meta name="msapplication-navbutton-color" content="#0f1a24">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16.png">
+    <!-- Apple Touch Icon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="manifest.json">
+
+    <!-- ===================== FIREBASE SDK COMPAT ===================== -->
+    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-database-compat.js"></script>
+
+    <style>
+        /* ========================================================= */
+        /*  RESET & BASE                                               */
+        /* ========================================================= */
+        *, *::before, *::after { box-sizing: border-box; user-select: none; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(145deg, #1a2a3a 0%, #0f1a24 100%);
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            padding: 16px;
+            overflow-x: hidden;
+        }
+
+        /* ========================================================= */
+        /*  CONNECTION BAR (top)                                       */
+        /* ========================================================= */
+        .connection-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 6px 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        .connection-bar.online {
+            background: #1a3a2a;
+            color: #4ade80;
+        }
+        .connection-bar.offline {
+            background: #3a1a1a;
+            color: #f87171;
+        }
+        .connection-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .connection-bar.online .connection-dot { background: #4ade80; }
+        .connection-bar.offline .connection-dot { background: #f87171; animation: blink 1s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        /* ========================================================= */
+        /*  APP CONTAINER                                              */
+        /* ========================================================= */
+        .app-container {
+            max-width: 460px;
+            width: 100%;
+            background: rgba(30, 40, 50, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 32px;
+            padding: 28px 22px 32px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.12);
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.6rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+            background: linear-gradient(135deg, #fff 0%, #7dd3fc 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: -0.02em;
+        }
+        .sub {
+            text-align: center;
+            color: #7a9bb0;
+            margin-bottom: 24px;
+            font-size: 0.78rem;
+        }
+
+        /* ========================================================= */
+        /*  INSTALL BANNER                                             */
+        /* ========================================================= */
+        .install-banner {
+            background: linear-gradient(135deg, #1e3a5f, #2a4a6f);
+            border: 1px solid rgba(100, 180, 255, 0.2);
+            border-radius: 16px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideDown 0.4s ease;
+        }
+        .install-banner.hidden { display: none; }
+        .install-banner img {
+            width: 40px; height: 40px;
+            border-radius: 10px;
+        }
+        .install-banner-text {
+            flex: 1;
+            font-size: 0.78rem;
+            color: #bbd4f0;
+            line-height: 1.3;
+        }
+        .install-banner-text strong { color: white; }
+        .btn-install {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border: none;
+            border-radius: 12px;
+            padding: 8px 16px;
+            color: white;
+            font-weight: 700;
+            font-size: 0.75rem;
+            cursor: pointer;
+            white-space: nowrap;
+            font-family: inherit;
+        }
+        .btn-install:active { transform: scale(0.96); }
+        .btn-dismiss {
+            background: none;
+            border: none;
+            color: #7a9bb0;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 4px;
+            line-height: 1;
+        }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ========================================================= */
+        /*  SETTINGS PANEL                                             */
+        /* ========================================================= */
+        .settings-panel {
+            background: #1e2a32;
+            border-radius: 20px;
+            padding: 10px 14px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+        .room-control {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #0f171f;
+            padding: 6px 12px;
+            border-radius: 20px;
+            flex: 1;
+        }
+        .room-control label { font-size: 0.75rem; font-weight: 700; color: #6c8ea0; }
+        #roomIdInput {
+            background: #2a3a44;
+            border: none;
+            padding: 7px 10px;
+            border-radius: 14px;
+            color: white;
+            font-weight: 600;
+            width: 110px;
+            text-align: center;
+            font-size: 0.82rem;
+            font-family: inherit;
+            outline: none;
+        }
+        #roomIdInput:focus { box-shadow: 0 0 0 2px #3b82f6; }
+
+        /* ========================================================= */
+        /*  BUTTONS                                                    */
+        /* ========================================================= */
+        .btn {
+            border: none;
+            border-radius: 14px;
+            padding: 7px 14px;
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-family: inherit;
+            transition: transform 0.1s, opacity 0.15s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn:active { transform: scale(0.95); }
+        .btn:hover { opacity: 0.9; }
+        .btn-connect { background: #2563eb; }
+        .btn-disconnect { background: #991b1b; }
+        .btn-release {
+            background: linear-gradient(135deg, #d97706, #b45309);
+            padding: 10px 22px;
+            font-size: 0.82rem;
+            border-radius: 16px;
+        }
+        .btn-join {
+            background: linear-gradient(135deg, #16a34a, #15803d);
+            padding: 10px 22px;
+            font-size: 0.82rem;
+            border-radius: 16px;
+        }
+
+        /* ========================================================= */
+        /*  MAIN AREA                                                  */
+        /* ========================================================= */
+        .main-area {
+            text-align: center;
+            margin: 16px 0;
+            padding: 20px 16px;
+            border-radius: 28px;
+            background: #0f1a1f50;
+            min-height: 320px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ========================================================= */
+        /*  LED                                                        */
+        /* ========================================================= */
+        .led-container { display: flex; flex-direction: column; align-items: center; margin: 16px 0; }
+        .led-body { position: relative; display: inline-block; margin-bottom: 20px; }
+        .led-capsule {
+            position: relative;
+            width: 100px; height: 100px;
+            background: radial-gradient(circle at 35% 30%, #e0e0e0, #a0a0a0);
+            border-radius: 50% 50% 45% 45% / 60% 60% 40% 40%;
+            box-shadow: 0 8px 12px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .led-lens {
+            width: 74px; height: 74px;
+            background: radial-gradient(circle at 35% 35%, #d4f1f9, #86b3c2);
+            border-radius: 50%;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.2), 0 0 8px rgba(0,0,0,0.2);
+            transition: background 0.07s linear, box-shadow 0.1s;
+        }
+        .led-capsule.on .led-lens {
+            background: radial-gradient(circle at 35% 35%, #b8ffa0, #2ecc2e);
+            box-shadow: 0 0 25px #2eff7a, 0 0 60px rgba(46,204,46,0.3), inset 0 1px 4px white;
+        }
+        .led-pins { display: flex; justify-content: center; gap: 26px; margin-top: -8px; }
+        .pin { width: 8px; background: linear-gradient(90deg, #b5b5b5, #7e7e7e); border-radius: 2px; position: relative; }
+        .pin.anode { height: 48px; margin-right: 6px; }
+        .pin.cathode { height: 32px; }
+        .pin-label {
+            font-size: 0.7rem; font-weight: 700; margin-top: 6px;
+            background: #000000aa; padding: 2px 7px; border-radius: 10px;
+            position: relative;
+        }
+        .pin.anode .pin-label { color: #ffaa66; }
+        .pin.cathode .pin-label { color: #88ccff; }
+        .legend {
+            display: flex; gap: 16px; justify-content: center; margin-top: 12px;
+            font-size: 0.65rem; background: #00000066; padding: 4px 10px;
+            border-radius: 12px; width: fit-content; margin-left: auto; margin-right: auto;
+        }
+
+        /* ========================================================= */
+        /*  EMITTER BUTTON                                             */
+        /* ========================================================= */
+        .emitter-button {
+            background: radial-gradient(circle at 30% 25%, #ff5e5e, #b00020);
+            width: 140px; height: 140px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 20px 30px rgba(0,0,0,0.4), inset 0 1px 3px rgba(255,255,255,0.5);
+            transition: transform 0.05s linear, box-shadow 0.1s;
+            margin: 16px auto;
+            display: block;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .emitter-button:active { transform: scale(0.94); box-shadow: 0 8px 15px black; }
+
+        /* ========================================================= */
+        /*  STATE & ROLE BADGES                                        */
+        /* ========================================================= */
+        .state-indicator {
+            background: #000000aa; border-radius: 20px;
+            padding: 7px 14px; display: inline-block;
+            font-size: 1.1rem; font-weight: 700; margin-top: 10px; color: white;
+        }
+        .role-badge {
+            border-radius: 14px; padding: 5px 14px;
+            display: inline-block; font-size: 0.85rem; font-weight: 800;
+            margin-bottom: 10px; letter-spacing: 0.03em;
+        }
+        .role-badge-master {
+            background: linear-gradient(135deg, rgba(239,68,68,0.5), rgba(185,28,28,0.5));
+            color: #fecaca; border: 1px solid rgba(239,68,68,0.5);
+        }
+        .role-badge-slave {
+            background: linear-gradient(135deg, rgba(59,130,246,0.5), rgba(29,78,216,0.5));
+            color: #bfdbfe; border: 1px solid rgba(59,130,246,0.5);
+        }
+        .role-badge-observer {
+            background: linear-gradient(135deg, rgba(100,100,100,0.4), rgba(60,60,60,0.4));
+            color: #d1d5db; border: 1px solid rgba(150,150,150,0.3);
+        }
+        .device-id {
+            font-size: 0.58rem; background: #1e2a32; border-radius: 10px;
+            padding: 2px 7px; margin-bottom: 8px; display: inline-block;
+            font-family: 'SF Mono', 'Fira Code', monospace; color: #6c8ea0;
+        }
+
+        /* ========================================================= */
+        /*  OTHER DEVICES PANEL                                        */
+        /* ========================================================= */
+        .other-devices {
+            background: #0a1118aa; border-radius: 14px; padding: 8px 12px;
+            margin-top: 12px; font-size: 0.68rem; color: #6c8ea0;
+            width: 100%; max-width: 320px;
+        }
+        .other-device-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 4px 0; border-bottom: 1px solid #ffffff08;
+        }
+        .other-device-row:last-child { border-bottom: none; }
+        .other-device-role {
+            padding: 1px 7px; border-radius: 8px; font-size: 0.6rem; font-weight: 700;
+        }
+        .role-label-master { color: #f87171; background: rgba(239,68,68,0.15); }
+        .role-label-slave { color: #60a5fa; background: rgba(59,130,246,0.15); }
+        .role-label-observer { color: #888; background: rgba(136,136,136,0.12); }
+
+        /* ========================================================= */
+        /*  STATUS & FOOTER                                            */
+        /* ========================================================= */
+        .status-msg {
+            background: #00000055; border-radius: 14px; padding: 8px 10px;
+            font-size: 0.7rem; text-align: center; margin-top: 16px;
+            color: #94b8d0; min-height: 34px; line-height: 1.4;
+        }
+        .status-error { color: #f87171 !important; }
+
+        .btn-group {
+            display: flex; gap: 8px; flex-wrap: wrap;
+            justify-content: center; margin-top: 14px;
+        }
+
+        .observer-view {
+            display: flex; flex-direction: column;
+            align-items: center; gap: 10px;
+        }
+
+        footer {
+            font-size: 0.62rem; text-align: center;
+            margin-top: 18px; color: #4a6a7e; line-height: 1.5;
+        }
+
+        /* ========================================================= */
+        /*  ANIMATIONS                                                 */
+        /* ========================================================= */
+        .fade-in { animation: fadeIn 0.25s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); } 50% { box-shadow: 0 0 0 10px rgba(239,68,68,0); } }
+        .pulse-ring { animation: pulse 2s infinite; }
+
+        /* ========================================================= */
+        /*  OFFLINE OVERLAY                                            */
+        /* ========================================================= */
+        .offline-overlay {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: #991b1b;
+            color: white;
+            text-align: center;
+            padding: 8px 16px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            z-index: 999;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+        .offline-overlay.visible { transform: translateY(0); }
+
+        /* ========================================================= */
+        /*  RESPONSIVE / SAFE AREAS                                    */
+        /* ========================================================= */
+        @supports (padding-top: env(safe-area-inset-top)) {
+            body { padding-top: env(safe-area-inset-top); }
+            .connection-bar { top: env(safe-area-inset-top); }
+        }
+        @supports (padding-bottom: env(safe-area-inset-bottom)) {
+            body { padding-bottom: env(safe-area-inset-bottom); }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Connection Status Bar -->
+<div class="connection-bar online" id="connectionBar">
+    <span class="connection-dot"></span>
+    <span id="connectionText">En linea</span>
+</div>
+
+<!-- Install Banner (shown when available) -->
+<div class="install-banner hidden" id="installBanner">
+    <img src="icons/icon-192.png" alt="icon">
+    <div class="install-banner-text">
+        <strong>Instalar LED Remoto</strong><br>
+        Acceso rapido desde tu pantalla de inicio
+    </div>
+    <button class="btn-install" id="installBtn">Instalar</button>
+    <button class="btn-dismiss" id="dismissBtn">&times;</button>
+</div>
+
+<div class="app-container">
+    <h1>LED Remoto</h1>
+    <div class="sub">Maestro-Esclavo en tiempo real</div>
+
+    <div class="settings-panel">
+        <div class="room-control">
+            <label>Sala</label>
+            <input type="text" id="roomIdInput" value="sala_prueba" maxlength="30" autocomplete="off" spellcheck="false">
+            <button class="btn btn-connect" id="connectBtn">Conectar</button>
+            <button class="btn btn-disconnect" id="disconnectBtn">Salir</button>
+        </div>
+    </div>
+
+    <div class="main-area" id="dynamicContent">
+        <div style="padding:20px; color:#6c8ea0;">Conecta a una sala para comenzar</div>
+    </div>
+    <div class="status-msg" id="statusMsg">Esperando conexion...</div>
+    <footer>
+        Primera sesion: Maestro (Emisor). Segunda: Esclavo (Receptor).<br>
+        Cualquiera puede liberar su rol en cualquier momento.
+    </footer>
+</div>
+
+<!-- Offline Banner -->
+<div class="offline-overlay" id="offlineOverlay">
+    Sin conexion a internet. La app funciona con datos cacheados, pero el control en tiempo real requiere conexion.
+</div>
+
+<script>
+(function() {
+    "use strict";
+
+    // =============================================================
+    //  1. SERVICE WORKER REGISTRATION
+    // =============================================================
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+            navigator.serviceWorker.register('./sw.js', { scope: './' })
+                .then(function(reg) {
+                    console.log('[PWA] Service Worker registrado, scope:', reg.scope);
+
+                    // Comprobar si hay una nueva version del SW esperando
+                    reg.addEventListener('updatefound', function() {
+                        var newWorker = reg.installing;
+                        newWorker.addEventListener('statechange', function() {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                console.log('[PWA] Nueva version disponible');
+                            }
+                        });
+                    });
+                })
+                .catch(function(err) {
+                    console.warn('[PWA] Error registrando SW:', err.message);
+                });
+
+            // Escuchar cuando el SW toma control (para recargar si hay nueva version)
+            navigator.serviceWorker.addEventListener('controllerchange', function() {
+                console.log('[PWA] Nuevo Service Worker activo');
+            });
+        });
+    }
+
+    // =============================================================
+    //  2. ONLINE / OFFLINE DETECTION
+    // =============================================================
+    var connectionBar = document.getElementById('connectionBar');
+    var connectionText = document.getElementById('connectionText');
+    var offlineOverlay = document.getElementById('offlineOverlay');
+
+    function updateOnlineStatus() {
+        if (navigator.onLine) {
+            connectionBar.className = 'connection-bar online';
+            connectionText.textContent = 'En linea';
+            offlineOverlay.classList.remove('visible');
+        } else {
+            connectionBar.className = 'connection-bar offline';
+            connectionText.textContent = 'Sin conexion';
+            offlineOverlay.classList.add('visible');
+        }
+    }
+
+    window.addEventListener('online', function() {
+        updateOnlineStatus();
+        setStatus('Conexion restaurada');
+    });
+    window.addEventListener('offline', function() {
+        updateOnlineStatus();
+        setStatus('Sin conexion a internet', true);
+    });
+    updateOnlineStatus();
+
+    // =============================================================
+    //  3. PWA INSTALL PROMPT
+    // =============================================================
+    var deferredPrompt = null;
+    var installBanner = document.getElementById('installBanner');
+    var installBtn = document.getElementById('installBtn');
+    var dismissBtn = document.getElementById('dismissBtn');
+
+    window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        deferredPrompt = e;
+        // Mostrar banner si no fue descartado antes
+        if (!localStorage.getItem('installDismissed')) {
+            installBanner.classList.remove('hidden');
+        }
+        console.log('[PWA] Install prompt capturado');
+    });
+
+    installBtn.addEventListener('click', function() {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(function(choice) {
+            console.log('[PWA] Install choice:', choice.outcome);
+            if (choice.outcome === 'accepted') {
+                installBanner.classList.add('hidden');
+            }
+            deferredPrompt = null;
+        });
+    });
+
+    dismissBtn.addEventListener('click', function() {
+        installBanner.classList.add('hidden');
+        localStorage.setItem('installDismissed', 'true');
+    });
+
+    window.addEventListener('appinstalled', function() {
+        console.log('[PWA] App instalada');
+        installBanner.classList.add('hidden');
+        deferredPrompt = null;
+        setStatus('App instalada correctamente');
+    });
+
+    // =============================================================
+    //  4. URL PARAMS: room=xxx
+    // =============================================================
+    var urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('room')) {
+        document.getElementById('roomIdInput').value = urlParams.get('room');
+    }
+
+    // =============================================================
+    //  5. FIREBASE
+    // =============================================================
+    var firebaseConfig = {
+        apiKey: "AIzaSyBfjYWT2Ex9V4x6ec9Ko1VyJxK_sdhsDpA",
+        authDomain: "ledemisorreceptor.firebaseapp.com",
+        databaseURL: "https://ledemisorreceptor-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "ledemisorreceptor",
+        storageBucket: "ledemisorreceptor.firebasestorage.app",
+        messagingSenderId: "20805551895",
+        appId: "1:20805551895:web:062fe6803a060b8aee9952"
+    };
+
+    var db = null;
+    try {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
+        log("Firebase OK");
+    } catch (err) {
+        showError("Firebase: " + err.message);
+        return;
+    }
+
+    // =============================================================
+    //  6. DEVICE ID
+    // =============================================================
+    var deviceId = sessionStorage.getItem("deviceId");
+    if (!deviceId) {
+        deviceId = crypto.randomUUID ? crypto.randomUUID() :
+            ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, function(c) {
+                return (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16);
+            });
+        sessionStorage.setItem("deviceId", deviceId);
+    }
+
+    // =============================================================
+    //  7. STATE
+    // =============================================================
+    var currentRoomId = null;
+    var ledState = false;
+    var myRole = "observer";
+    var firebaseMasterId = null;
+    var isConnected = false;
+    var heartbeatTimer = null;
+    var myDeviceRef = null;
+
+    var masterIdCb = null, masterIdRef = null;
+    var devicesCb = null, devicesRef = null;
+    var ledCb = null, ledRef = null;
+    var allDevices = {};
+
+    var roomInput = document.getElementById('roomIdInput');
+    var connectBtn = document.getElementById('connectBtn');
+    var disconnectBtn = document.getElementById('disconnectBtn');
+    var dynamicDiv = document.getElementById('dynamicContent');
+    var statusSpan = document.getElementById('statusMsg');
+
+    // =============================================================
+    //  UTILITIES
+    // =============================================================
+    function log(m) { console.log("[LED] " + m); }
+
+    function setStatus(msg, err) {
+        statusSpan.innerText = msg;
+        statusSpan.className = err ? 'status-msg status-error' : 'status-msg';
+    }
+
+    function showError(m) {
+        log("ERR: " + m);
+        setStatus(m, true);
+    }
+
+    function rp() { return "ledRooms/" + currentRoomId; }
+
+    function setMasterId(id) { return db.ref(rp() + "/masterId").set(id || null); }
+    function setMyRole(r) { return db.ref(rp() + "/devices/" + deviceId + "/role").set(r); }
+
+    function doHeartbeat() {
+        if (!isConnected || !currentRoomId) return;
+        db.ref(rp() + "/devices/" + deviceId + "/timestamp")
+            .set(firebase.database.ServerValue.TIMESTAMP)
+            .catch(function(e) { log("HB err: " + e.message); });
+    }
+
+    // =============================================================
+    //  SUBSCRIBE: masterId
+    // =============================================================
+    function subscribeMasterId() {
+        if (!db || !currentRoomId) return;
+        unsubMaster();
+
+        masterIdRef = db.ref(rp() + "/masterId");
+        masterIdCb = masterIdRef.on('value', function(snap) {
+            var mId = snap.val();
+            firebaseMasterId = mId;
+
+            if (mId === deviceId) {
+                if (myRole !== "master") { myRole = "master"; setMyRole("active"); }
+                renderUI(); return;
+            }
+            if (mId && mId !== deviceId) {
+                var d = allDevices[deviceId];
+                myRole = (d && d.role === "active") ? "slave" : "observer";
+                renderUI(); return;
+            }
+            var d2 = allDevices[deviceId];
+            if (d2 && d2.role === "active") { claimMastership(); }
+            else { myRole = "observer"; renderUI(); }
+        }, function(e) { showError("masterId: " + e.message); });
+    }
+
+    function unsubMaster() {
+        if (masterIdRef && masterIdCb) masterIdRef.off('value', masterIdCb);
+        masterIdRef = null; masterIdCb = null;
+    }
+
+    // =============================================================
+    //  CLAIM MASTERSHIP
+    // =============================================================
+    function claimMastership() {
+        if (!db || !currentRoomId) return;
+        db.ref(rp() + "/masterId").once('value').then(function(snap) {
+            var c = snap.val();
+            if (c === null) {
+                return db.ref(rp() + "/masterId").set(deviceId);
+            } else if (c === deviceId) {
+                myRole = "master"; renderUI();
+            } else {
+                var d = allDevices[deviceId];
+                myRole = (d && d.role === "active") ? "slave" : "observer";
+                renderUI();
+            }
+        }).catch(function(e) { log("claim err: " + e.message); });
+    }
+
+    // =============================================================
+    //  SUBSCRIBE: devices
+    // =============================================================
+    function subscribeDevices() {
+        if (!db || !currentRoomId) return;
+        unsubDevices();
+
+        devicesRef = db.ref(rp() + "/devices");
+        devicesCb = devicesRef.on('value', function(snap) {
+            allDevices = snap.val() || {};
+            var d = allDevices[deviceId];
+
+            if (d && d.role === "neutral" && myRole !== "master") {
+                if (myRole !== "observer") myRole = "observer";
+            }
+            if (d && d.role === "active" && myRole === "observer") {
+                if (!firebaseMasterId) { claimMastership(); }
+                else if (firebaseMasterId !== deviceId) { myRole = "slave"; }
+            }
+            renderUI();
+        }, function(e) { showError("devices: " + e.message); });
+    }
+
+    function unsubDevices() {
+        if (devicesRef && devicesCb) devicesRef.off('value', devicesCb);
+        devicesRef = null; devicesCb = null;
+    }
+
+    // =============================================================
+    //  SUBSCRIBE: LED
+    // =============================================================
+    function subscribeLed() {
+        if (!db || !currentRoomId) return;
+        unsubLed();
+
+        ledRef = db.ref(rp() + "/ledState");
+        ledCb = ledRef.on('value', function(snap) {
+            var v = snap.val() === true;
+            if (v !== ledState) { ledState = v; }
+            renderUI();
+        }, function(e) { log("LED err: " + e.message); });
+    }
+
+    function unsubLed() {
+        if (ledRef && ledCb) ledRef.off('value', ledCb);
+        ledRef = null; ledCb = null;
+    }
+
+    // =============================================================
+    //  ACTIONS
+    // =============================================================
+    function toggleLed() {
+        if (myRole !== "master") { setStatus("Solo el MAESTRO controla el LED"); return; }
+        var next = !ledState;
+        db.ref(rp() + "/ledState").set(next)
+            .then(function() { setStatus("LED " + (next ? "ON" : "OFF")); })
+            .catch(function(e) { showError("LED err: " + e.message); });
+    }
+
+    function releaseRole() {
+        if (!isConnected) return;
+        if (myRole === "master") {
+            setStatus("Liberando rol...");
+            var others = getActiveOthers();
+            var p = others.length > 0 ? setMasterId(others[0].id) : setMasterId(null);
+            p.then(function() { return setMyRole("neutral"); })
+             .then(function() { myRole = "observer"; renderUI(); setStatus("Rol liberado. Eres OBSERVADOR."); })
+             .catch(function(e) { showError(e.message); });
+        } else if (myRole === "slave") {
+            setStatus("Liberando rol...");
+            setMyRole("neutral").then(function() {
+                myRole = "observer"; renderUI(); setStatus("Rol liberado. Eres OBSERVADOR.");
+            }).catch(function(e) { showError(e.message); });
+        }
+    }
+
+    function joinSystem() {
+        if (!isConnected) return;
+        setStatus("Uniendose...");
+        setMyRole("active").then(function() { claimMastership(); })
+            .catch(function(e) { showError(e.message); });
+    }
+
+    function getActiveOthers() {
+        var arr = [];
+        var keys = Object.keys(allDevices);
+        for (var i = 0; i < keys.length; i++) {
+            if (keys[i] !== deviceId && allDevices[keys[i]].role === "active") {
+                arr.push({ id: keys[i], ts: allDevices[keys[i]].timestamp || 0 });
+            }
+        }
+        arr.sort(function(a, b) { return a.ts - b.ts; });
+        return arr;
+    }
+
+    // =============================================================
+    //  VIBRATION FEEDBACK
+    // =============================================================
+    function vibrate(ms) {
+        if (navigator.vibrate) navigator.vibrate(ms);
+    }
+
+    // =============================================================
+    //  RENDER UI
+    // =============================================================
+    function renderUI() {
+        if (!isConnected || !currentRoomId) {
+            dynamicDiv.innerHTML = '<div style="padding:20px; color:#6c8ea0;">Desconectado</div>';
+            return;
+        }
+
+        var idTag = '<div class="device-id">' + deviceId.slice(0, 10) + '</div>';
+        var othersH = buildOthersHtml();
+
+        if (myRole === "master") {
+            dynamicDiv.innerHTML =
+                idTag +
+                '<div class="role-badge role-badge-master fade-in pulse-ring">MAESTRO</div>' +
+                '<button class="emitter-button" id="ledButton"></button>' +
+                '<div class="state-indicator">LED: ' + (ledState ? 'ON' : 'OFF') + '</div>' +
+                '<div class="btn-group"><button class="btn btn-release" id="releaseBtn">Liberar rol</button></div>' +
+                othersH;
+            document.getElementById('ledButton').onclick = function() { vibrate(30); toggleLed(); };
+            document.getElementById('releaseBtn').onclick = releaseRole;
+            if (!statusSpan.classList.contains('status-error')) {
+                statusSpan.innerText = "Eres el MAESTRO. Pulsa para controlar el LED.";
+            }
+        }
+        else if (myRole === "slave") {
+            dynamicDiv.innerHTML =
+                idTag +
+                '<div class="role-badge role-badge-slave fade-in">ESCLAVO</div>' +
+                '<div class="led-container">' +
+                    '<div class="led-body">' +
+                        '<div class="led-capsule ' + (ledState ? 'on' : '') + '">' +
+                            '<div class="led-lens"></div>' +
+                        '</div>' +
+                        '<div class="led-pins">' +
+                            '<div class="pin anode"><div class="pin-label">+ Anodo</div></div>' +
+                            '<div class="pin cathode"><div class="pin-label">- Catodo</div></div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="legend">Anodo (+) &nbsp;&nbsp; Catodo (-)</div>' +
+                    '<div style="margin:8px 0; font-size:0.95rem; font-weight:700; color:' + (ledState ? '#4ade80' : '#6b7280') + ';">' +
+                        (ledState ? 'ENCENDIDO' : 'APAGADO') +
+                    '</div>' +
+                '</div>' +
+                '<div class="btn-group"><button class="btn btn-release" id="releaseBtn">Liberar rol</button></div>' +
+                othersH;
+            document.getElementById('releaseBtn').onclick = releaseRole;
+            if (!statusSpan.classList.contains('status-error')) {
+                statusSpan.innerText = "Eres el ESCLAVO. El Maestro controla tu LED.";
+            }
+        }
+        else {
+            dynamicDiv.innerHTML =
+                idTag +
+                '<div class="role-badge role-badge-observer fade-in">OBSERVADOR</div>' +
+                '<div class="observer-view">' +
+                    '<p style="color:#7a9bb0; font-size:0.82rem; margin:6px 0 0;">No participas activamente</p>' +
+                    '<p style="color:#4a6a7e; font-size:0.72rem; margin:0;">Pulsa el boton para unirte</p>' +
+                    '<div style="margin-top:4px; font-size:0.78rem; color:' + (ledState ? '#4ade80' : '#6b7280') + ';">' +
+                        'LED: ' + (ledState ? 'ON' : 'OFF') +
+                    '</div>' +
+                '</div>' +
+                '<div class="btn-group"><button class="btn btn-join" id="joinBtn">Unirse al sistema</button></div>' +
+                othersH;
+            document.getElementById('joinBtn').onclick = joinSystem;
+            if (!statusSpan.classList.contains('status-error')) {
+                statusSpan.innerText = "Eres OBSERVADOR.";
+            }
+        }
+    }
+
+    function buildOthersHtml() {
+        var keys = Object.keys(allDevices);
+        var others = [];
+        for (var i = 0; i < keys.length; i++) {
+            if (keys[i] !== deviceId) others.push({ id: keys[i], data: allDevices[keys[i]] });
+        }
+        if (others.length === 0) return '';
+
+        var h = '<div class="other-devices fade-in"><div style="font-weight:700; margin-bottom:4px; color:#8899aa; font-size:0.65rem;">Otros dispositivos:</div>';
+        for (var j = 0; j < others.length; j++) {
+            var o = others[j], label, cls;
+            if (firebaseMasterId === o.id) { label = "Maestro"; cls = "role-label-master"; }
+            else if (o.data.role === "active") { label = "Esclavo"; cls = "role-label-slave"; }
+            else { label = "Obs."; cls = "role-label-observer"; }
+            h += '<div class="other-device-row"><span style="font-family:monospace; font-size:0.6rem;">' + o.id.slice(0, 10) + '</span><span class="other-device-role ' + cls + '">' + label + '</span></div>';
+        }
+        return h + '</div>';
+    }
+
+    // =============================================================
+    //  CONNECT / DISCONNECT
+    // =============================================================
+    function connect() {
+        if (isConnected) disconnect();
+
+        var room = roomInput.value.trim() || "sala_prueba";
+        currentRoomId = room;
+
+        if (!db) { showError("Firebase no disponible"); return; }
+        if (!navigator.onLine) { showError("Sin conexion a internet"); return; }
+
+        setStatus("Conectando...");
+
+        myDeviceRef = db.ref(rp() + "/devices/" + deviceId);
+        myDeviceRef.set({
+            timestamp: firebase.database.ServerValue.TIMESTAMP,
+            role: "active"
+        }).then(function() {
+            return myDeviceRef.onDisconnect().remove();
+        }).then(function() {
+            subscribeDevices();
+            subscribeLed();
+            subscribeMasterId();
+            isConnected = true;
+
+            if (heartbeatTimer) clearInterval(heartbeatTimer);
+            heartbeatTimer = setInterval(doHeartbeat, 4000);
+
+            setStatus("Conectado. Determinando rol...");
+            renderUI();
+            vibrate(50);
+        }).catch(function(err) {
+            showError("Error: " + err.message);
+            log(err);
+        });
+    }
+
+    function disconnect() {
+        if (!isConnected) return;
+
+        if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+
+        if (currentRoomId && myRole === "master") {
+            var others = getActiveOthers();
+            var p = others.length > 0 ? setMasterId(others[0].id) : setMasterId(null);
+            p.catch(function() {});
+        }
+
+        if (myDeviceRef && currentRoomId) {
+            myDeviceRef.onDisconnect().cancel();
+            myDeviceRef.remove().catch(function() {});
+        }
+
+        unsubDevices();
+        unsubLed();
+        unsubMaster();
+
+        isConnected = false;
+        myRole = "observer";
+        firebaseMasterId = null;
+        currentRoomId = null;
+        allDevices = {};
+        myDeviceRef = null;
+
+        setStatus("Desconectado");
+        renderUI();
+        vibrate(20);
+    }
+
+    // =============================================================
+    //  EVENTS
+    // =============================================================
+    connectBtn.addEventListener('click', connect);
+    disconnectBtn.addEventListener('click', disconnect);
+    roomInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') connect();
+    });
+
+    renderUI();
+})();
+</script>
+</body>
+</html>
